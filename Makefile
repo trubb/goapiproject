@@ -10,4 +10,5 @@ test:
 	go test -v
 
 clean:
-	rm apiserver
+	rm apiserver; \
+	rm api_data.db

@@ -1,4 +1,4 @@
-module github.com/trubb/goapiproject
+module goapiproject
 
 go 1.19
 
