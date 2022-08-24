@@ -15,8 +15,8 @@ func CreateAndFillBuckets(db *bolt.DB) error {
 	}
 
 	// TODO figure out how to autoincrement keys
-	AddStringToBucket(db, "pingResponses", "ping_first", "You rang?")    // keep prefix scans in mind
-	AddStringToBucket(db, "pingResponses", "ping_second", "Hello there") // keep prefix scans in mind
+	PutStringIntoBucket(db, "pingResponses", "ping_first", "You rang?")    // keep prefix scans in mind
+	PutStringIntoBucket(db, "pingResponses", "ping_second", "Hello there") // keep prefix scans in mind
 
 	// TODO more of those
 
@@ -38,9 +38,9 @@ func CreateBucket(db *bolt.DB, bucketName string) error {
 	return nil
 }
 
-// AddStringToBucket inserts a string at the provided key in the provided bucket
-func AddStringToBucket(db *bolt.DB, bucket string, key string, value string) error {
-	if err := db.Update(func(tx *bolt.Tx) error {
+// PutStringIntoBucket inserts a string at the provided key in the provided bucket
+func PutStringIntoBucket(db *bolt.DB, bucket string, key string, value string) (err error) {
+	if err = db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucket))
 		err := b.Put([]byte(key), []byte(value))
 
@@ -59,10 +59,24 @@ func GetStringFromBucket(db *bolt.DB, bucket string, key string) (value []byte, 
 		b := tx.Bucket([]byte(bucket))
 		v := b.Get([]byte(key))
 		value = append(value, v...) // inelegant solution to copying by unpacking v using ... notation
-		log.Printf("Retrieved: \"%s\" at \"%s\"\nWill send \"%s\" as response", v, key, value)
+		log.Printf("Retrieved: \"%s\" at \"%s\", Will send \"%s\" as response", v, key, value)
 		return nil
 	}); err != nil {
 		return nil, err
 	}
 	return value, nil
+}
+
+// TODO get all entries in a bucket
+func GetAllFromBucket(db *bolt.DB, bucket string) {}
+
+// DeleteBucketEntry deletes the entry stored at the provided key in the provided bucket
+func DeleteBucketEntry(db *bolt.DB, bucket string, key string) (err error) {
+	if err = db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(bucket))
+		return b.Delete([]byte(key)) // if nil is returned deletion succeeded
+	}); err != nil {
+		return err
+	}
+	return nil
 }
