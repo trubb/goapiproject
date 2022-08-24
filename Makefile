@@ -7,8 +7,10 @@ apiserver:
 build: apiserver
 
 test:
-	go test -v
+	go test -v; \
+	cd dbactions && go test -v
 
 clean:
 	rm apiserver; \
-	rm api_data.db
+	rm api_data.db; \
+	rm dbactions/dbactions_test.db

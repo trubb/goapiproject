@@ -11,7 +11,7 @@ import (
 // test creating a db, inserting an item, retrieving it, updating it, and then deleting it using our wrappers
 func TestDBFuncs(t *testing.T) {
 	// set up connection to db file
-	db, err := bolt.Open("api_data.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
+	db, err := bolt.Open("dbactions_test.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
 		log.Fatal(err)
 	}
