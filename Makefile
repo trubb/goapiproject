@@ -8,9 +8,8 @@ build: apiserver
 
 test:
 	go test -v; \
-	cd dbactions && go test -v
+	rm *_test.db
 
 clean:
 	rm apiserver; \
-	rm api_data.db; \
-	rm dbactions/dbactions_test.db
+	rm *.db
