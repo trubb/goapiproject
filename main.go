@@ -1,13 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"time"
 
-	dbactions "goapiproject/dbactions"
+	"goapiproject/handlers"
+	"goapiproject/helpers"
 
+	"github.com/asdine/storm/v3"
 	"github.com/gin-gonic/gin"
 	"github.com/urfave/cli/v2"
 	bolt "go.etcd.io/bbolt"
@@ -15,12 +16,17 @@ import (
 
 var apiPort string
 
-func main() {
+type Achievement struct {
+	ID          int `storm:"id,increment"`
+	Name        string
+	Description string
+}
 
+func main() {
 	app := &cli.App{
 		Name:   "apiserver",
-		Usage:  "API endpoints are accessible on <localhost> or <IP of the machine where it runs, port number is specified as an argument (default: 8080)", // TODO
-		Action: apiserv,
+		Usage:  "A very basic REST API with basic database backing",
+		Action: apiServer,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:        "port",
@@ -38,53 +44,39 @@ func main() {
 	}
 }
 
-// TODO do we want to use this somehow, or at all?
-type urlDB struct {
-	dataBase *bolt.DB
-}
+// apiServer runs the API server using gin, bbolt, and storm
+func apiServer(c *cli.Context) error {
+	serverIP, _ := helpers.GetServersOwnIP() // retrieve own IP for logging purposes
+	log.Printf("Server started\n\tAPI accessible on %v:%s\n", serverIP, apiPort)
 
-// apiserv runs the API server using gin
-func apiserv(c *cli.Context) error {
-	log.Printf("Server started")
-	log.Printf("\tAPI accessible on port: %s\n", apiPort)
-	fmt.Println()
-
-	//TODO how to pass into handlerfuncs in reasonable way
 	// Open the api_data.db data file in the current directory.
 	// DB file will be created if it doesn't exist. 1s timeout prevents indefinite wait
-	db, err := bolt.Open("api_data.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
+	db, err := storm.Open("api_data.db", storm.BoltOptions(0600, &bolt.Options{Timeout: 1 * time.Second}))
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer db.Close() // close to release file lock
+	defer db.Close() // close database connection to release file lock
 
-	err = dbactions.CreateAndFillBuckets(db)
+	err = helpers.ResetAndFillDB(db) // reset the DB and put some initial data in it
 	if err != nil {
 		return err
 	}
 
-	gin.SetMode(gin.ReleaseMode)
-	r := gin.Default()
-	r.GET( // GET request on /ping endpoint
-		"/ping", // (relative) PATH
-		// TODO return random message from the database, consider "prefix scans"
-		func(c *gin.Context) { // handlerfunc (what to do when this endpoint is accessed)
-			msgString, err := dbactions.GetStringFromBucket(db, "pingResponses", "ping_second")
-			if err != nil {
-				log.Println(err.Error()) // FYI how do real error handling in handlerfunc?
-			}
+	gin.SetMode(gin.ReleaseMode) // set automatic logging level
+	router := gin.Default()      // use default gin instance with logger and recovery middleware preattached
 
-			log.Printf("retrieved message: %s\n", msgString)
-
-			c.JSON(200, gin.H{ // parse this into JSON (and return?)
-				"message": string(msgString),
-			})
-		},
-	)
+	// set up routers and their respective handler functions
+	router.GET("/online", handlers.Online())
+	router.GET("/achievement/all", handlers.GetAllAchievements(db))
+	router.GET("/achievement/one", handlers.GetOneAchievement(db))
+	router.POST("/achievement/create", handlers.CreateANewAchievement(db))
+	router.PUT("/achievement/update", handlers.UpdateExistingAchievement(db))
+	router.DELETE("/achievement/delete", handlers.DeleteExistingAchievement(db))
+	router.PUT("/achievement/reset/really", handlers.ResetDatabase(db))
 
 	// listen and serve on <instance localhost/IP>:<port>
 	// accessible through the wm's eth0 IP in WSL
-	err = r.Run(":" + apiPort)
+	err = router.Run(":" + apiPort)
 	if err != nil {
 		log.Fatal(err)
 	}
