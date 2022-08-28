@@ -15,6 +15,7 @@ import (
 )
 
 var apiPort string
+var resetDB bool
 
 type Achievement struct {
 	ID          int `storm:"id,increment"`
@@ -34,6 +35,13 @@ func main() {
 				Usage:       "assign `PORT` to send API calls to",
 				Destination: &apiPort,
 				Value:       "8080",
+			},
+			&cli.BoolFlag{
+				Name:        "resetdb",
+				Aliases:     []string{"reset"},
+				Usage:       "reset the db to a default starting state with three pre-existing entries",
+				Destination: &resetDB,
+				Value:       false,
 			},
 		},
 	}
@@ -57,9 +65,11 @@ func apiServer(c *cli.Context) error {
 	}
 	defer db.Close() // close database connection to release file lock
 
-	err = helpers.ResetAndFillDB(db) // reset the DB and put some initial data in it
-	if err != nil {
-		return err
+	if resetDB {
+		err = helpers.ResetAndFillDB(db) // reset the DB and put some initial data in it
+		if err != nil {
+			return err
+		}
 	}
 
 	gin.SetMode(gin.ReleaseMode) // set automatic logging level

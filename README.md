@@ -33,6 +33,7 @@ COMMANDS:
 GLOBAL OPTIONS:
    --help, -h               show help (default: false)
    --port PORT, --api PORT  assign PORT to send API calls to (default: "8080")
+   --resetdb, --reset       reset the db to a default starting state with three pre-existing entries (default: false)
 ```
 
 ## Running tests
